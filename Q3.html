@@ -1,4 +1,247 @@
-document.addEventListener('DOMContentLoaded', () => {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU Scheduling Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* --- FUTURISTIC DARK THEME & CUSTOM STYLES --- */
+        :root {
+            --primary-glow: #00ffff; /* Cyan */
+            --secondary-glow: #a0a0a0;
+            --success-glow: #00ff7f; /* Bright Green */
+            --danger-glow: #ff0055;  /* Hot Pink/Red */
+            --info-glow: #8b5cf6; /* Purple */
+            
+            --bg-dark-primary: #0a0f1a;
+            --bg-dark-secondary: #101829;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: rgba(0, 255, 255, 0.3);
+            
+            --glow-shadow: 0 0 8px var(--primary-glow);
+            --text-glow: 0 0 5px var(--primary-glow);
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--bg-dark-primary);
+            color: var(--text-primary);
+        }
+        
+        h1, h2, h3, h4 {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h1 { color: var(--primary-glow); text-shadow: var(--text-glow); }
+        h2 { color: var(--text-primary); }
+        h3, h4 { color: var(--text-secondary); }
+
+        /* Main panels styling */
+        .panel {
+            background-color: var(--bg-dark-secondary);
+            border: 1px solid var(--border-color);
+            box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.1);
+        }
+        
+        /* Form elements styling */
+        input[type="number"], select {
+            background-color: var(--bg-dark-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-glow);
+            box-shadow: var(--glow-shadow);
+        }
+
+        /* Custom radio button group */
+        input[type="radio"]:checked + label {
+            background-color: var(--primary-glow);
+            color: var(--bg-dark-primary);
+            border-color: var(--primary-glow);
+            box-shadow: var(--glow-shadow);
+            z-index: 10;
+        }
+
+        /* Table styling */
+        thead { background-color: rgba(0, 255, 255, 0.1); }
+        th { color: var(--primary-glow) !important; }
+
+        /* Gantt Chart */
+        .gantt-chart-container {
+            display: flex;
+            height: 50px;
+            width: 100%;
+            background-color: var(--bg-dark-primary);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        .gantt-block {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--bg-dark-primary);
+            font-weight: 700;
+            font-size: 0.875rem;
+            position: relative;
+            border-right: 1px solid rgba(10, 15, 26, 0.5);
+            text-shadow: none;
+        }
+        .gantt-block:last-child {
+            border-right: none;
+        }
+        .gantt-time {
+            position: absolute;
+            bottom: -20px;
+            right: -5px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .gantt-start-time {
+            position: absolute;
+            bottom: -20px;
+            left: -5px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+<div class="container mx-auto p-4 md:p-8 max-w-7xl">
+    <header class="text-center mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold">CPU Scheduling Simulator</h1>
+        <p class="text-md text-gray-400 mt-2">Visualize Preemptive and Non-Preemptive Scheduling Algorithms</p>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-1 p-6 panel">
+            <h2 class="text-xl font-semibold mb-4 border-b border-[--border-color] pb-2">Configuration</h2>
+
+            <form id="add-process-form" class="space-y-4 mb-6">
+                <h3 class="text-lg font-medium">Add New Process</h3>
+                <div>
+                    <label for="arrival-time" class="block text-sm font-medium text-gray-400">Arrival Time</label>
+                    <input type="number" id="arrival-time" min="0" value="0" class="mt-1 block w-full px-3 py-2 shadow-sm focus:outline-none sm:text-sm">
+                </div>
+                <div>
+                    <label for="burst-time" class="block text-sm font-medium text-gray-400">Burst Time</label>
+                    <input type="number" id="burst-time" min="1" value="1" class="mt-1 block w-full px-3 py-2 shadow-sm focus:outline-none sm:text-sm">
+                </div>
+                <button type="submit" class="w-full bg-[--primary-glow] text-[--bg-dark-primary] font-semibold py-2 px-4 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[--bg-dark-primary] focus:ring-[--primary-glow] transition duration-150 ease-in-out">
+                    Add Process
+                </button>
+            </form>
+
+            <div class="mb-6">
+                <h3 class="block text-lg font-medium">Scheduling Type</h3>
+                <div class="mt-2 flex shadow-sm">
+                    <div class="relative flex items-stretch flex-grow focus-within:z-10">
+                        <input type="radio" name="scheduling-type" id="non-preemptive" value="non-preemptive" class="hidden" checked>
+                        <label for="non-preemptive" class="w-full text-center cursor-pointer border border-[--border-color] bg-[--bg-dark-primary] p-2">Non-Preemptive</label>
+                    </div>
+                    <div class="relative flex items-stretch flex-grow focus-within:z-10 -ml-px">
+                        <input type="radio" name="scheduling-type" id="preemptive" value="preemptive" class="hidden">
+                        <label for="preemptive" class="w-full text-center cursor-pointer border border-[--border-color] bg-[--bg-dark-primary] p-2">Preemptive</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h3 for="algorithm-select" class="block text-lg font-medium">Select Algorithm</h3>
+                <select id="algorithm-select" class="mt-1 block w-full px-3 py-2 shadow-sm focus:outline-none sm:text-sm">
+                    </select>
+            </div>
+
+            <div id="time-quantum-container" class="mb-6 hidden">
+                <h3 for="time-quantum" class="block text-lg font-medium">Time Quantum</h3>
+                <input type="number" id="time-quantum" min="1" value="2" class="mt-1 block w-full px-3 py-2 shadow-sm focus:outline-none sm:text-sm">
+            </div>
+
+            <div class="flex space-x-4">
+                <button id="run-simulation" class="flex-1 bg-[--success-glow] text-[--bg-dark-primary] font-semibold py-2 px-4 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[--bg-dark-primary] focus:ring-[--success-glow] transition duration-150 ease-in-out">
+                    Run Simulation
+                </button>
+                <button id="reset-simulation" class="flex-1 bg-[--danger-glow] text-white font-semibold py-2 px-4 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[--bg-dark-primary] focus:ring-[--danger-glow] transition duration-150 ease-in-out">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2 p-6 panel">
+            <div>
+                <h2 class="text-xl font-semibold mb-4">Process List</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-[--border-color]">
+                        <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Process ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Arrival Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Burst Time</th>
+                        </tr>
+                        </thead>
+                        <tbody id="process-table-body" class="divide-y divide-[--border-color]">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="results-container" class="mt-8 opacity-0 transition-opacity duration-500">
+                <h2 class="text-xl font-semibold mb-4">Results</h2>
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Gantt Chart</h3>
+                    <div class="relative pt-4">
+                        <div id="gantt-chart" class="gantt-chart-container"></div>
+                    </div>
+                </div>
+
+                <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+                    <div class="bg-[rgba(0,255,255,0.1)] p-4 border border-[--border-color]">
+                        <h4 class="text-sm font-semibold text-[--primary-glow]">Average Waiting Time</h4>
+                        <p id="avg-waiting-time" class="text-2xl font-bold text-white">0.00</p>
+                    </div>
+                    <div class="bg-[rgba(139,92,246,0.1)] p-4 border border-[--info-glow]">
+                        <h4 class="text-sm font-semibold text-[--info-glow]">Average Turnaround Time</h4>
+                        <p id="avg-turnaround-time" class="text-2xl font-bold text-white">0.00</p>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium mb-2">Detailed Results</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-[--border-color]">
+                            <thead>
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">Process ID</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">Arrival</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">Burst</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">Completion</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">Turnaround</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider">Waiting</th>
+                            </tr>
+                            </thead>
+                            <tbody id="results-table-body" class="divide-y divide-[--border-color]">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const addProcessForm = document.getElementById('add-process-form');
     const arrivalTimeInput = document.getElementById('arrival-time');
@@ -34,10 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     };
 
-    // Color palette for Gantt chart blocks
+    // Color palette for Gantt chart blocks (Updated for dark theme)
     const colors = [
         '#3b82f6', '#8b5cf6', '#10b981', '#ef4444', '#f97316',
-        '#f59e0b', '#ec4899', '#6366f1', '#14b8a6', '#d946ef'
+        '#22d3ee', '#ec4899', '#6366f1', '#14b8a6', '#d946ef'
     ];
 
     // --- UI LOGIC ---
@@ -302,9 +545,10 @@ document.addEventListener('DOMContentLoaded', () => {
             block.className = 'gantt-block';
             block.style.width = `${widthPercentage}%`;
             if (item.id === 'Idle') {
-                block.style.backgroundColor = '#9ca3af';
+                block.style.backgroundColor = '#4b5563'; // gray-600
                 block.textContent = 'Idle';
                 block.classList.add('italic');
+                block.style.color = '#d1d5db'; // gray-300
             } else {
                 block.style.backgroundColor = colors[(item.id - 1) % colors.length];
                 block.textContent = `P${item.id}`;
@@ -333,3 +577,6 @@ document.addEventListener('DOMContentLoaded', () => {
     addSampleProcesses();
     renderProcessTable();
 });
+</script>
+</body>
+</html>

@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF--8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS Synchronization Problems Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* --- NEW FUTURISTIC DARK THEME --- */
+        :root {
+            --primary-glow: #00ffff; /* Cyan */
+            --secondary-glow: #a0a0a0;
+            --success-glow: #00ff7f; /* Bright Green */
+            --warning-glow: #ffaa00; /* Vibrant Orange */
+            --danger-glow: #ff0055;  /* Hot Pink/Red */
+            
+            --bg-dark-primary: #0a0f1a;
+            --bg-dark-secondary: #101829;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: rgba(0, 255, 255, 0.3);
+            
+            --glow-shadow: 0 0 8px var(--primary-glow);
+            --text-glow: 0 0 5px var(--primary-glow);
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--bg-dark-primary);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        h1, h2 {
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            color: var(--primary-glow);
+            text-shadow: var(--text-glow);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        h2 { font-size: 2rem; margin-bottom: 1.5rem; }
+        h4 { 
+            font-size: 1.2rem; 
+            color: var(--text-secondary);
+            margin-top: 0; 
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* --- Tab Navigation --- */
+        .tab-container {
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .tab-link {
+            background-color: transparent;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 1rem 1.5rem;
+            transition: color 0.3s, text-shadow 0.3s;
+            font-size: 1.1rem;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 3px solid transparent;
+            margin-bottom: -1px; /* Align with container border */
+        }
+
+        .tab-link:hover {
+            color: var(--primary-glow);
+        }
+
+        .tab-link.active {
+            color: var(--primary-glow);
+            text-shadow: var(--text-glow);
+            border-bottom: 3px solid var(--primary-glow);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 2rem;
+            background-color: rgba(16, 24, 41, 0.8);
+            border: 1px solid var(--border-color);
+            box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.15);
+        }
+
+        /* --- Controls & Simulation Area --- */
+        .controls {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background-color: var(--bg-dark-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .controls button, .controls input {
+            padding: 10px 18px;
+            margin: 0 8px;
+            font-size: 1rem;
+            font-family: 'Share Tech Mono', monospace;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease-in-out;
+            background-color: transparent;
+            color: var(--text-primary);
+        }
+
+        .controls button {
+            color: var(--primary-glow);
+            border-color: var(--primary-glow);
+            text-shadow: 0 0 3px var(--primary-glow);
+        }
+
+        .controls button:hover {
+            background-color: var(--primary-glow);
+            color: var(--bg-dark-primary);
+            box-shadow: var(--glow-shadow);
+            text-shadow: none;
+        }
+        
+        #stop-pc, #stop-dp, #stop-rw { color: var(--secondary-glow); border-color: var(--secondary-glow); text-shadow: 0 0 3px var(--secondary-glow); }
+        #stop-pc:hover, #stop-dp:hover, #stop-rw:hover { background-color: var(--secondary-glow); color: var(--bg-dark-primary); box-shadow: 0 0 8px var(--secondary-glow); }
+        
+        #add-writer { color: var(--danger-glow); border-color: var(--danger-glow); text-shadow: 0 0 3px var(--danger-glow); }
+        #add-writer:hover { background-color: var(--danger-glow); color: var(--bg-dark-primary); box-shadow: 0 0 8px var(--danger-glow); }
+        
+        .controls input { text-align: center; }
+        .controls input:focus { outline: none; border-color: var(--primary-glow); box-shadow: var(--glow-shadow); }
+
+        .simulation-area { display: flex; justify-content: space-between; gap: 2rem; min-height: 400px; }
+
+        .actors, .resource, .log-area {
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            width: 32%;
+            background-color: var(--bg-dark-secondary);
+            box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
+        }
+
+        .log {
+            height: 300px;
+            overflow-y: auto;
+            background: var(--bg-dark-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        .log div { padding: 2px 0; }
+
+        /* --- Producer-Consumer Specific --- */
+        #buffer-container {
+            display: flex; height: 60px; padding: 10px;
+            border: 1px dashed var(--primary-glow);
+            background-color: rgba(0, 255, 255, 0.05);
+            align-items: center;
+        }
+
+        .buffer-slot {
+            width: 50px; height: 50px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            margin: 0 4px; display: flex; align-items: center; justify-content: center;
+            background-color: var(--bg-dark-primary);
+        }
+
+        .buffer-item {
+            width: 40px; height: 40px;
+            background: radial-gradient(circle, var(--success-glow), transparent 70%);
+            color: var(--bg-dark-primary);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 0 10px var(--success-glow);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+
+        .actor-status {
+            padding: 8px 12px; margin: 8px 0; font-weight: 500;
+            transition: all 0.3s; border: 1px solid;
+        }
+        .actor-status.waiting { border-color: var(--warning-glow); color: var(--warning-glow); background: rgba(255, 170, 0, 0.1);}
+        .actor-status.working { border-color: var(--primary-glow); color: var(--primary-glow); background: rgba(0, 255, 255, 0.1);}
+
+        /* --- Dining Philosophers Specific --- */
+        #table-container { display: flex; justify-content: center; align-items: center; height: 100%; }
+
+        .table {
+            position: relative; width: 300px; height: 300px;
+            border: 2px solid var(--primary-glow);
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--bg-dark-secondary), var(--bg-dark-primary));
+            box-shadow: var(--glow-shadow), inset 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .philosopher, .chopstick { position: absolute; font-weight: bold; transition: all 0.3s ease; }
+
+        .philosopher {
+            width: 60px; height: 60px; /* Kept circular for philosopher shape */
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid;
+        }
+        .philosopher.thinking { border-color: var(--primary-glow); color: var(--primary-glow); background: var(--bg-dark-secondary); box-shadow: 0 0 8px var(--primary-glow);}
+        .philosopher.hungry { border-color: var(--warning-glow); color: var(--warning-glow); background: var(--bg-dark-secondary); box-shadow: 0 0 8px var(--warning-glow);}
+        .philosopher.eating { border-color: var(--success-glow); color: var(--success-glow); background: var(--bg-dark-secondary); box-shadow: 0 0 8px var(--success-glow);}
+
+        .chopstick {
+            width: 4px; height: 70px;
+            background-color: var(--secondary-glow);
+            box-shadow: 0 0 5px var(--secondary-glow);
+            z-index: 5;
+        }
+        
+        #c0, #c1, #c2, #c3, #c4 { transition: background-color 0.2s, box-shadow 0.2s; }
+
+        /* --- Readers-Writers Specific --- */
+        #resource-box {
+            height: 120px;
+            border: 2px solid var(--border-color);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5em; font-weight: bold; margin-bottom: 20px;
+            transition: all 0.3s; text-transform: uppercase; letter-spacing: 2px;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0, 255, 255, 0.05) 10px, rgba(0, 255, 255, 0.05) 20px);
+        }
+
+        #resource-box.reading { border-color: var(--primary-glow); color: var(--primary-glow); text-shadow: var(--text-glow); }
+        #resource-box.writing { border-color: var(--danger-glow); color: var(--danger-glow); text-shadow: 0 0 5px var(--danger-glow); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Classic Synchronization Problems Simulation</h1>
+
+        <div class="tab-container">
+            <button class="tab-link active" onclick="openProblem(event, 'producer-consumer')">Producer-Consumer</button>
+            <button class="tab-link" onclick="openProblem(event, 'dining-philosophers')">Dining Philosophers</button>
+            <button class="tab-link" onclick="openProblem(event, 'readers-writers')">Readers-Writers</button>
+        </div>
+
+        <div id="producer-consumer" class="tab-content" style="display: block;">
+            <h2>Producer-Consumer Problem</h2>
+            <div class="controls">
+                <label for="buffer-size">Buffer Size:</label>
+                <input type="number" id="buffer-size" value="5" min="1" max="10">
+                <button id="start-pc">Start</button>
+                <button id="stop-pc">Stop</button>
+            </div>
+            <div class="simulation-area">
+                <div class="actors">
+                    <h4>Producers</h4>
+                    <div id="producers-list"></div>
+                    <h4>Consumers</h4>
+                    <div id="consumers-list"></div>
+                </div>
+                <div class="resource">
+                    <h4>Shared Buffer</h4>
+                    <div id="buffer-container"></div>
+                    <p>Semaphore Status: Mutex=<span id="pc-mutex">1</span>, Full=<span id="pc-full">0</span>, Empty=<span id="pc-empty">5</span></p>
+                </div>
+                <div class="log-area">
+                    <h4>Log</h4>
+                    <div id="pc-log" class="log"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dining-philosophers" class="tab-content">
+            <h2>Dining Philosophers Problem</h2>
+            <div class="controls">
+                <button id="start-dp">Start</button>
+                <button id="stop-dp">Stop</button>
+            </div>
+            <div class="simulation-area">
+                 <div class="resource" style="width: 65%;">
+                    <h4>Table</h4>
+                    <div id="table-container">
+                        <div class="table">
+                        </div>
+                    </div>
+                </div>
+                 <div class="log-area" style="width: 35%;">
+                    <h4>Log</h4>
+                    <div id="dp-log" class="log"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="readers-writers" class="tab-content">
+            <h2>Readers-Writers Problem</h2>
+            <div class="controls">
+                <button id="add-reader">Add Reader</button>
+                <button id="add-writer">Add Writer</button>
+                <button id="stop-rw">Stop All</button>
+            </div>
+            <div class="simulation-area">
+                <div class="actors">
+                    <h4>Waiting Queues</h4>
+                    <div id="rw-queues"></div>
+                </div>
+                <div class="resource">
+                    <h4>Shared Resource</h4>
+                    <div id="resource-box">Idle</div>
+                    <p>Active Readers: <span id="active-readers-count">0</span></p>
+                    <p>Active Writer: <span id="active-writer-status">None</span></p>
+                </div>
+                <div class="log-area">
+                    <h4>Log</h4>
+                    <div id="rw-log" class="log"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // General Tab functionality
+        function openProblem(evt, problemName) {
+            let i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tab-link");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(problemName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        // Helper function for delays
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        // --- PRODUCER-CONSUMER LOGIC ---
+        (function() {
+            const startBtn = document.getElementById('start-pc');
+            const stopBtn = document.getElementById('stop-pc');
+            const bufferSizeInput = document.getElementById('buffer-size');
+            const bufferContainer = document.getElementById('buffer-container');
+            const logDiv = document.getElementById('pc-log');
+            const producersList = document.getElementById('producers-list');
+            const consumersList = document.getElementById('consumers-list');
+            
+            let buffer = [];
+            let bufferSize = 5;
+            let producers = [], consumers = [];
+            let itemCounter = 0;
+            let simulationRunning = false;
+            
+            // Semaphores
+            let mutex = 1, full = 0, empty;
+
+            function updateSemaphoreUI() {
+                document.getElementById('pc-mutex').textContent = mutex;
+                document.getElementById('pc-full').textContent = full;
+                document.getElementById('pc-empty').textContent = empty;
+            }
+
+            function log(message) {
+                logDiv.innerHTML += `<div>${message}</div>`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+
+            function drawBuffer() {
+                bufferContainer.innerHTML = '';
+                for (let i = 0; i < bufferSize; i++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'buffer-slot';
+                    if (buffer[i]) {
+                        const item = document.createElement('div');
+                        item.className = 'buffer-item';
+                        item.textContent = buffer[i];
+                        slot.appendChild(item);
+                    }
+                    bufferContainer.appendChild(slot);
+                }
+                updateSemaphoreUI();
+            }
+            
+            function setActorStatus(id, status, text) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.className = `actor-status ${status}`;
+                    el.textContent = text;
+                }
+            }
+
+            async function producer(id) {
+                const actorId = `p-${id}`;
+                producersList.innerHTML += `<div id="${actorId}" class="actor-status">Producer ${id}: Idle</div>`;
+                while (simulationRunning) {
+                    setActorStatus(actorId, 'waiting', `Producer ${id}: Waiting for empty slot`);
+                    if (empty > 0) {
+                        empty--;
+                        if (mutex > 0) {
+                            mutex--;
+                            updateSemaphoreUI();
+                            setActorStatus(actorId, 'working', `Producer ${id}: Producing item`);
+                            await sleep(1500); // Time to produce
+                            const item = ++itemCounter;
+                            buffer.push(item);
+                            log(`Producer ${id} produced item ${item}. Buffer: [${buffer}]`);
+                            drawBuffer();
+                            mutex++;
+                            full++;
+                            updateSemaphoreUI();
+                        } else {
+                            empty++; // couldn't get mutex, release empty
+                        }
+                    }
+                    await sleep(1000); // Idle time
+                }
+                document.getElementById(actorId)?.remove();
+            }
+            
+            async function consumer(id) {
+                const actorId = `c-${id}`;
+                consumersList.innerHTML += `<div id="${actorId}" class="actor-status">Consumer ${id}: Idle</div>`;
+                while(simulationRunning) {
+                    setActorStatus(actorId, 'waiting', `Consumer ${id}: Waiting for item`);
+                    if (full > 0) {
+                        full--;
+                        if (mutex > 0) {
+                            mutex--;
+                            updateSemaphoreUI();
+                            setActorStatus(actorId, 'working', `Consumer ${id}: Consuming item`);
+                            await sleep(2000); // Time to consume
+                            const item = buffer.shift();
+                            log(`Consumer ${id} consumed item ${item}. Buffer: [${buffer}]`);
+                            drawBuffer();
+                            mutex++;
+                            empty++;
+                            updateSemaphoreUI();
+                        } else {
+                            full++; // couldn't get mutex, release full
+                        }
+                    }
+                    await sleep(1500); // Idle time
+                }
+                document.getElementById(actorId)?.remove();
+            }
+
+            startBtn.addEventListener('click', () => {
+                if (simulationRunning) return;
+                simulationRunning = true;
+                bufferSize = parseInt(bufferSizeInput.value);
+                empty = bufferSize;
+                buffer = [];
+                logDiv.innerHTML = '';
+                producersList.innerHTML = '';
+                consumersList.innerHTML = '';
+                log('--- Producer-Consumer Simulation Started ---');
+                drawBuffer();
+                // Start 2 producers and 2 consumers
+                producer(1);
+                producer(2);
+                consumer(1);
+                consumer(2);
+            });
+
+            stopBtn.addEventListener('click', () => {
+                simulationRunning = false;
+                log('--- Producer-Consumer Simulation Stopped ---');
+            });
+            
+            // Initial draw
+            bufferSize = parseInt(bufferSizeInput.value);
+            empty = bufferSize;
+            drawBuffer();
+        })();
+
+
+        // --- DINING PHILOSOPHERS LOGIC ---
+        (function() {
+            const startBtn = document.getElementById('start-dp');
+            const stopBtn = document.getElementById('stop-dp');
+            const table = document.querySelector('#dining-philosophers .table');
+            const logDiv = document.getElementById('dp-log');
+            
+            const NUM_PHILOSOPHERS = 5;
+            let simulationRunning = false;
+            let philosophers = [];
+            let chopsticks = [];
+
+            function log(message) {
+                logDiv.innerHTML += `<div>${message}</div>`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+
+            function setupTable() {
+                table.innerHTML = '';
+                const radius = 120;
+                const centerX = 148; /* adjusted for border */
+                const centerY = 148; /* adjusted for border */
+
+                for (let i = 0; i < NUM_PHILOSOPHERS; i++) {
+                    // Philosophers
+                    const angle = (i * 360) / NUM_PHILOSOPHERS - 90; // -90 to start at top
+                    const pX = centerX + radius * Math.cos(angle * Math.PI / 180);
+                    const pY = centerY + radius * Math.sin(angle * Math.PI / 180);
+                    const pDiv = document.createElement('div');
+                    pDiv.className = 'philosopher';
+                    pDiv.id = `p${i}`;
+                    pDiv.textContent = `P ${i}`;
+                    pDiv.style.left = `${pX - 30}px`;
+                    pDiv.style.top = `${pY - 30}px`;
+                    table.appendChild(pDiv);
+
+                    // Chopsticks
+                    const cAngle = angle + 360 / (2 * NUM_PHILOSOPHERS);
+                    const cX = centerX + (radius - 10) * Math.cos(cAngle * Math.PI / 180);
+                    const cY = centerY + (radius - 10) * Math.sin(cAngle * Math.PI / 180);
+                    const cDiv = document.createElement('div');
+                    cDiv.className = 'chopstick';
+                    cDiv.id = `c${i}`;
+                    cDiv.style.left = `${cX - 2}px`;
+                    cDiv.style.top = `${cY - 35}px`;
+                    cDiv.style.transform = `rotate(${cAngle + 90}deg)`;
+                    table.appendChild(cDiv);
+                }
+            }
+            
+            function updatePhilosopherState(id, state) {
+                philosophers[id].state = state;
+                const pDiv = document.getElementById(`p${id}`);
+                pDiv.className = `philosopher ${state}`;
+                log(`Philosopher ${id} is now ${state}.`);
+            }
+            
+            function updateChopstickState(id, isTaken) {
+                const cDiv = document.getElementById(`c${id}`);
+                if(isTaken) {
+                    cDiv.style.backgroundColor = 'var(--danger-glow)';
+                    cDiv.style.boxShadow = '0 0 5px var(--danger-glow)';
+                } else {
+                    cDiv.style.backgroundColor = 'var(--secondary-glow)';
+                    cDiv.style.boxShadow = '0 0 5px var(--secondary-glow)';
+                }
+            }
+
+            async function philosopherLife(id) {
+                const leftChopstick = id;
+                const rightChopstick = (id + 1) % NUM_PHILOSOPHERS;
+
+                while (simulationRunning) {
+                    // THINKING
+                    updatePhilosopherState(id, 'thinking');
+                    await sleep(1000 + Math.random() * 2000);
+
+                    // HUNGRY
+                    updatePhilosopherState(id, 'hungry');
+                    
+                    // This is a deadlock-free solution: an ordered resource policy.
+                    // The last philosopher picks up right chopstick first to break the cycle.
+                    const first = (id === NUM_PHILOSOPHERS - 1) ? rightChopstick : leftChopstick;
+                    const second = (id === NUM_PHILOSOPHERS - 1) ? leftChopstick : rightChopstick;
+
+                    // Pick up chopsticks
+                    let pickedUpFirst = false;
+                    while (!pickedUpFirst) {
+                        if (!chopsticks[first]) {
+                            chopsticks[first] = true; 
+                            updateChopstickState(first, true);
+                            log(`Philosopher ${id} picked up chopstick ${first}.`);
+                            pickedUpFirst = true;
+                        } else {
+                            await sleep(100);
+                        }
+                    }
+                    
+                    await sleep(500); // Small delay to show picking one by one
+
+                    let pickedUpSecond = false;
+                     while (!pickedUpSecond) {
+                        if (!chopsticks[second]) {
+                            chopsticks[second] = true; 
+                            updateChopstickState(second, true);
+                            log(`Philosopher ${id} picked up chopstick ${second}.`);
+                            pickedUpSecond = true;
+                        } else {
+                            await sleep(100);
+                        }
+                    }
+                    
+                    // EATING
+                    updatePhilosopherState(id, 'eating');
+                    await sleep(2000 + Math.random() * 2000);
+
+                    // Put down chopsticks
+                    chopsticks[first] = false; updateChopstickState(first, false);
+                    log(`Philosopher ${id} put down chopstick ${first}.`);
+                    chopsticks[second] = false; updateChopstickState(second, false);
+                    log(`Philosopher ${id} put down chopstick ${second}.`);
+                }
+            }
+
+            startBtn.addEventListener('click', () => {
+                if (simulationRunning) return;
+                simulationRunning = true;
+                logDiv.innerHTML = '';
+                log('--- Dining Philosophers Simulation Started ---');
+                philosophers = [];
+                chopsticks = Array(NUM_PHILOSOPHERS).fill(false); // false = available
+                for (let i = 0; i < NUM_PHILOSOPHERS; i++) {
+                    philosophers.push({ id: i, state: 'thinking' });
+                    updatePhilosopherState(i, 'thinking'); // Set initial state visually
+                    updateChopstickState(i, false);
+                    philosopherLife(i);
+                }
+            });
+
+            stopBtn.addEventListener('click', () => {
+                simulationRunning = false;
+                log('--- Dining Philosophers Simulation Stopped ---');
+            });
+
+            setupTable();
+        })();
+
+
+        // --- READERS-WRITERS LOGIC ---
+        (function() {
+            const addReaderBtn = document.getElementById('add-reader');
+            const addWriterBtn = document.getElementById('add-writer');
+            const stopBtn = document.getElementById('stop-rw');
+            const resourceBox = document.getElementById('resource-box');
+            const logDiv = document.getElementById('rw-log');
+            const queuesDiv = document.getElementById('rw-queues');
+            
+            let activeReadersCount = 0;
+            let activeWriter = false;
+            let readerCounter = 0;
+            let writerCounter = 0;
+            let waitingWriters = [];
+            let simulationRunning = true;
+            
+            // Semaphores (conceptual)
+            let rw_mutex = true; // true = available (for writers)
+            let mutex = true; // true = available (for read_count)
+
+            function log(message) {
+                logDiv.innerHTML += `<div>${message}</div>`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+
+            function updateUI() {
+                document.getElementById('active-readers-count').textContent = activeReadersCount;
+                document.getElementById('active-writer-status').textContent = activeWriter ? "1" : "None";
+                
+                if (activeWriter) {
+                    resourceBox.className = 'writing';
+                    resourceBox.textContent = 'WRITING';
+                } else if (activeReadersCount > 0) {
+                    resourceBox.className = 'reading';
+                    resourceBox.textContent = 'READING';
+                } else {
+                    resourceBox.className = '';
+                    resourceBox.textContent = 'Idle';
+                }
+
+                queuesDiv.innerHTML = `<h4>Writers Queue: ${waitingWriters.length}</h4>`;
+            }
+
+            async function reader(id) {
+                log(`Reader ${id} wants to read.`);
+                
+                while (!mutex) await sleep(100); // Wait for mutex
+                mutex = false; // Lock mutex
+                
+                if (activeReadersCount === 0) {
+                    while (!rw_mutex) await sleep(100); // Wait for resource lock
+                    rw_mutex = false; // First reader locks the resource
+                }
+                activeReadersCount++;
+                mutex = true; // Release mutex
+                updateUI();
+
+                log(`Reader ${id} is now reading.`);
+                await sleep(2000 + Math.random() * 3000); // Reading time
+                log(`Reader ${id} has finished reading.`);
+
+                while (!mutex) await sleep(100); // Wait for mutex
+                mutex = false; // Lock mutex
+                activeReadersCount--;
+                if (activeReadersCount === 0) {
+                    rw_mutex = true; // Last reader releases the resource lock
+                }
+                mutex = true; // Release mutex
+                updateUI();
+                
+                // After finishing, check if a writer is waiting
+                if (waitingWriters.length > 0 && rw_mutex) {
+                    waitingWriters.shift()(); // Start the next writer
+                }
+            }
+            
+            function writer(id) {
+                log(`Writer ${id} wants to write.`);
+                
+                const executeWrite = async () => {
+                    while (!rw_mutex) await sleep(100); // Wait for resource lock
+                    rw_mutex = false; // Lock the resource
+                    activeWriter = true;
+                    updateUI();
+                    
+                    log(`Writer ${id} is now writing.`);
+                    await sleep(3000); // Writing time
+                    log(`Writer ${id} has finished writing.`);
+                    
+                    activeWriter = false;
+                    rw_mutex = true; // Release the resource lock
+                    updateUI();
+                    
+                    // After finishing, check if another writer is waiting
+                    if (waitingWriters.length > 0) {
+                        waitingWriters.shift()();
+                    }
+                };
+
+                if (rw_mutex && activeReadersCount === 0) {
+                    executeWrite();
+                } else {
+                    log(`Writer ${id} is waiting in queue.`);
+                    waitingWriters.push(executeWrite);
+                    updateUI();
+                }
+            }
+            
+            addReaderBtn.addEventListener('click', () => {
+                if (!simulationRunning) return;
+                readerCounter++;
+                reader(readerCounter);
+            });
+            
+            addWriterBtn.addEventListener('click', () => {
+                if (!simulationRunning) return;
+                writerCounter++;
+                writer(writerCounter);
+            });
+
+            stopBtn.addEventListener('click', () => {
+                simulationRunning = false;
+                log("--- Simulation Stopped. No new actors will be added. ---");
+            });
+        })();
+    </script>
+</body>
+</html>

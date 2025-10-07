@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RMS vs EDF Scheduling Simulator + Threads Demo</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#60a5fa;--muted:#9ca3af;--glass:rgba(255,255,255,0.03)}
+    html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;color:#e6eef8;background:linear-gradient(180deg,#071025 0%, #071a2e 100%);}
+    .wrap{max-width:1200px;margin:28px auto;padding:20px;}
+    h1{margin:0 0 12px;font-weight:700;color:var(--accent)}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
+    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 24px rgba(2,6,23,0.6);}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,select,button{font-size:14px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .row{display:flex;gap:8px;margin-bottom:8px}
+    table{width:100%;border-collapse:collapse;color:#dbeafe}
+    th,td{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.03);text-align:left;font-size:13px}
+    th{color:var(--muted)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    canvas{width:100%;height:160px;background:linear-gradient(90deg, rgba(6,9,15,0.6), rgba(10,16,25,0.6));border-radius:8px}
+    .muted{color:var(--muted);font-size:13px}
+    .small{font-size:12px}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:var(--glass);color:var(--muted);font-weight:600}
+    .algo{display:flex;gap:8px;align-items:center}
+    .threads{display:flex;gap:8px;flex-direction:column}
+    .log{height:120px;overflow:auto;padding:8px;border-radius:8px;background:rgba(0,0,0,0.25);font-family:monospace;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>RMS vs EDF — Scheduling Simulator</h1>
+    <div class="grid">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div class="pill">Simulated CPU: single-core (event-driven JS)</div>
+            <div class="muted small">Time quantum: 1 ms simulation tick (logical)</div>
+          </div>
+          <div class="algo">
+            <label for="algo">Algorithm</label>
+            <select id="algo">
+              <option value="rms">Rate Monotonic (RMS)</option>
+              <option value="edf">Earliest Deadline First (EDF)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:100px">
+            <label>Task name</label>
+            <input id="name" placeholder="T1" />
+          </div>
+          <div style="width:100px">
+            <label>Period (ms)</label>
+            <input id="period" type="number" value="50" />
+          </div>
+          <div style="width:120px">
+            <label>Execution time (wcet ms)</label>
+            <input id="wcet" type="number" value="10" />
+          </div>
+          <div style="width:110px">
+            <label>Relative deadline (ms)</label>
+            <input id="deadline" type="number" value="50" />
+          </div>
+          <div style="width:110px">
+            <label>Sporadic?</label>
+            <select id="sporadic"><option value="no">No</option><option value="yes">Yes</option></select>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="add">Add Task</button>
+          <button id="clear">Clear Tasks</button>
+          <button id="run">Run</button>
+          <button id="step">Step</button>
+          <button id="reset">Reset</button>
+          <button id="export">Export Gantt (PNG)</button>
+          <button id="save">Save Tasks</button>
+          <button id="load">Load Tasks</button>
+          <label style="margin-left:auto">Speed <input id="speed" type="range" min="1" max="200" value="12"/></label>
+          <div style="text-align:right">
+            <div class="muted">Sim time: <span id="simtime">0</span> ms</div>
+            <div class="muted">CPU Utilization: <span id="util">0%</span></div>
+          </div>
+        </div>
+
+        <h3 style="margin-top:14px">Tasks</h3>
+        <table id="taskTable">
+          <thead><tr><th>Name</th><th>Period</th><th>WCET</th><th>Deadline</th><th>Sporadic</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <h3 style="margin-top:14px">Timeline (Gantt)</h3>
+        <canvas id="timeline" width="800" height="160"></canvas>
+
+        <h3 style="margin-top:12px">Log</h3>
+        <div class="log" id="log"></div>
+      </div>
+
+      <div class="card">
+        <h3>Threads demonstration</h3>
+        <div class="threads">
+          <div>
+            <strong>User-level threads (cooperative):</strong>
+            <button id="startCoop">Start Cooperative</button>
+            <button id="stopCoop">Stop Cooperative</button>
+            <div class="muted small">Output:</div>
+            <div class="log" id="coopLog"></div>
+          </div>
+
+          <div style="margin-top:8px">
+            <strong>Kernel-level threads (Web Workers):</strong>
+            <button id="startWorkers">Start Workers</button>
+            <button id="stopWorkers">Stop Workers</button>
+            <div class="muted small">Output:</div>
+            <div class="log" id="workerLog"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const taskList = [];
+let simTime = 0;
+let timelineCtx;
+let timelineScale = 6;
+let running = false;
+let timerId = null;
+let speed = 12;
+let selectedAlgo = document.getElementById('algo');
+const logEl = document.getElementById('log');
+const simtimeEl = document.getElementById('simtime');
+const utilEl = document.getElementById('util');
+
+function log(msg){ logEl.textContent = `[t=${simTime}ms] ${msg}\n` + logEl.textContent; }
+function updateTaskTable(){
+  const tbody = document.querySelector('#taskTable tbody');
+  tbody.innerHTML='';
+  taskList.forEach((t, idx)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${t.name}</td><td>${t.period}</td><td>${t.wcet}</td><td>${t.deadline}</td><td>${t.sporadic?'Yes':'No'}</td><td><button data-idx='${idx}' class='del'>Delete</button></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.del').forEach(b=>b.addEventListener('click',e=>{ const i=+e.target.dataset.idx; taskList.splice(i,1); updateTaskTable(); updateUtil(); drawTimeline(); }))
+}
+
+function addTask(obj){
+  const t = Object.assign({id:Math.random().toString(36).slice(2,7),nextRelease:0,remaining:0,absDeadline:null,generator:null},obj);
+  taskList.push(t);
+  updateTaskTable(); updateUtil(); drawTimeline();
+}
+
+function updateUtil(){ const U = taskList.reduce((s,t)=>s+(t.wcet/t.period),0); utilEl.textContent = (U*100).toFixed(2)+'%'; }
+function makeJobGenerator(task,jobExecTime){ return (function*(){ for(let i=0;i<jobExecTime;i++){ yield i+1; } })(); }
+
+function releaseJobs(){ taskList.forEach(t=>{ if(simTime>=t.nextRelease){ if(t.sporadic==='yes'){ if(Math.random()<0.3){ t.remaining=t.wcet; t.absDeadline=simTime+t.deadline; t.generator=makeJobGenerator(t,t.wcet); t.nextRelease+=t.period; log(`Sporadic job released for ${t.name}`); } } else { t.remaining=t.wcet; t.absDeadline=simTime+t.deadline; t.generator=makeJobGenerator(t,t.wcet); t.nextRelease+=t.period; log(`Job released for ${t.name}`); } } }); }
+
+function pickNextJob(){ const ready=taskList.filter(t=>t.remaining>0); if(ready.length===0)return null; return selectedAlgo.value==='rms'?ready.sort((a,b)=>a.period-b.period)[0]:ready.sort((a,b)=>a.absDeadline-b.absDeadline)[0]; }
+
+function tick(){ releaseJobs(); const job=pickNextJob(); if(job){ const res=job.generator.next(); job.remaining--; drawExecution(job.id); if(job.remaining<=0){ log(`${job.name} finished`); job.generator=null; job.absDeadline=null; } if(job.absDeadline!==null&&simTime+1>job.absDeadline&&job.remaining>0){ log(`Deadline missed by ${job.name}`); } } else { drawIdle(); } }
+
+const canvas=document.getElementById('timeline'); timelineCtx=canvas.getContext('2d');
+function clearTimeline(){ timelineCtx.clearRect(0,0,canvas.width,canvas.height); timelineCtx.fillStyle='rgba(10,16,25,0.6)'; timelineCtx.fillRect(0,0,canvas.width,canvas.height); }
+let drawPos=0; function drawExecution(taskId){ const w=Math.max(1,timelineScale); timelineCtx.fillStyle=colorFor(taskId); timelineCtx.fillRect(drawPos,30,w,100); drawPos+=w; }
+function drawIdle(){ const w=Math.max(1,timelineScale); timelineCtx.fillStyle='rgba(180,180,180,0.06)'; timelineCtx.fillRect(drawPos,30,w,100); drawPos+=w; }
+function colorFor(id){ let h=0; for(let i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))%360; return `hsl(${h} 70% 55%)`; }
+function drawTimeline(){ clearTimeline(); drawPos=0; }
+
+function startSim(){ if(running)return; running=true; timerId=setInterval(()=>{tick();simTime++;simtimeEl.textContent=simTime;if(drawPos>canvas.width-20){const img=timelineCtx.getImageData(timelineScale*10,0,canvas.width-timelineScale*10,canvas.height);timelineCtx.clearRect(0,0,canvas.width,canvas.height);timelineCtx.putImageData(img,0,0);drawPos-=timelineScale*10;}},speed); }
+function stepSim(){ tick();simTime++;simtimeEl.textContent=simTime; }
+function stopSim(){ running=false;if(timerId)clearInterval(timerId);timerId=null; }
+function resetSim(){ stopSim();simTime=0;simtimeEl.textContent='0';logEl.textContent='';taskList.forEach(t=>{t.nextRelease=0;t.remaining=0;t.generator=null;t.absDeadline=null;});drawTimeline();updateUtil(); }
+
+// Export PNG
+function exportPNG(){ const link=document.createElement('a'); link.download='gantt.png'; link.href=canvas.toDataURL('image/png'); link.click(); }
+// Save/Load tasks
+function saveTasks(){ localStorage.setItem('rts_tasks',JSON.stringify(taskList)); alert('Tasks saved'); }
+function loadTasks(){ const d=localStorage.getItem('rts_tasks'); if(d){ const arr=JSON.parse(d); taskList.length=0; arr.forEach(o=>taskList.push(o)); updateTaskTable(); updateUtil(); drawTimeline(); } }
+
+document.getElementById('add').onclick=()=>{const name=document.getElementById('name').value||`T${taskList.length+1}`;const period=document.getElementById('period').value;const wcet=document.getElementById('wcet').value;const deadline=document.getElementById('deadline').value;const sporadic=document.getElementById('sporadic').value; if(!period||!wcet||!deadline)return alert('fill all fields'); addTask({name,period:+period,wcet:+wcet,deadline:+deadline,sporadic});};
+document.getElementById('clear').onclick=()=>{taskList.length=0;updateTaskTable();updateUtil();drawTimeline();};
+document.getElementById('run').onclick=()=>{startSim();};
+document.getElementById('step').onclick=()=>{stepSim();};
+document.getElementById('reset').onclick=()=>{resetSim();};
+document.getElementById('export').onclick=()=>{exportPNG();};
+document.getElementById('save').onclick=()=>{saveTasks();};
+document.getElementById('load').onclick=()=>{loadTasks();};
+document.getElementById('speed').oninput=(e)=>{speed=+e.target.value;if(running){stopSim();startSim();}};
+
+// Cooperative threads demo
+let coopRunning=false;let coopId=null;const coopLog=document.getElementById('coopLog');function coopLogMsg(msg){coopLog.textContent=msg+'\n'+coopLog.textContent;}
+function* niceWorker(label){let i=0;while(true){for(let j=0;j<20;j++){i++;yield `${label} step ${i}`;}}}
+let coopG1=niceWorker('UThread-1');let coopG2=niceWorker('UThread-2');function coopSchedulerTick(){if(!coopRunning)return;coopLogMsg(coopG1.next().value);coopLogMsg(coopG2.next().value);} 
+document.getElementById('startCoop').onclick=()=>{if(coopRunning)return;coopRunning=true;coopLog.textContent='';coopId=setInterval(coopSchedulerTick,200);};
+document.getElementById('stopCoop').onclick=()=>{if(coopId)clearInterval(coopId);coopRunning=false;};
+
+// Workers demo
+let workerA=null,workerB=null;const workerLog=document.getElementById('workerLog');function workerLogMsg(msg){workerLog.textContent=msg+'\n'+workerLog.textContent;}
+function makeWorkerBlob(){const code=`let counter=0;function busy(ms){const start=Date.now();while(Date.now()-start<ms){} }onmessage=function(e){if(e.data==='start'){self.interval=setInterval(()=>{busy(40);counter++;postMessage('progress:'+counter);},100);}else if(e.data==='stop'){clearInterval(self.interval);close();}}`;return new Blob([code],{type:'application/javascript'});} 
+document.getElementById('startWorkers').onclick=()=>{workerLog.textContent='';const blob=makeWorkerBlob();const url=URL.createObjectURL(blob);workerA=new Worker(url);workerB=new Worker(url);workerA.onmessage=(e)=>workerLogMsg('WorkerA '+e.data);workerB.onmessage=(e)=>workerLogMsg('WorkerB '+e.data);workerA.postMessage('start');workerB.postMessage('start');};
+document.getElementById('stopWorkers').onclick=()=>{if(workerA){workerA.postMessage('stop');workerA=null;}if(workerB){workerB.postMessage('stop');workerB=null;}};
+
+// Resize
+window.addEventListener('resize',()=>{canvas.width=Math.min(800,document.querySelector('.card').clientWidth-40);clearTimeline();});canvas.width=Math.min(800,document.querySelector('.card').clientWidth-40);
+</script>
+</body>
+</html>
